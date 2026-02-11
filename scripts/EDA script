@@ -1,0 +1,130 @@
+---
+title: "Project Part 1"
+subtitle: "Factors that Affect Median Income"
+fontsize: 12pt
+geometry: margin=1in
+urlcolor: black
+output: pdf_document
+header-includes:
+- \usepackage{setspace}
+- \onehalfspacing
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, highlight=FALSE)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(scales)
+```
+
+## Exploratory Data Analysis
+
+
+```{r, echo=FALSE, warning=FALSE,results=FALSE}
+dataluv<- read.csv("dataset.csv")
+dataluv<- dataluv[-c(48:16335),]
+write.csv(dataluv, "cleaned_dataset.csv", row.names = FALSE)
+dataluv <- dataluv %>% rename(Med_Income = Median.Household.Income, 
+                              No_PubAssist= Households.without.Public.Assistance,
+                              PubAssist= Households.w..Public.Assistance.Income,
+                              SSI= Households.w..Social.Security.Income,
+                              No_SSI= Households.without.SSI,
+                              AI_AN= American.Indian.Alaska.Native,
+                              Multi_Race = X..2..Races)
+```
+
+
+```{r, echo=FALSE, warning=FALSE,results=FALSE}
+#Numerical Summary 1
+race_cols <- c("White","Asian","Black","AI_AN","Pacific.Islander","Multi_Race","Other.Race")
+
+
+stopifnot("dataluv" %in% ls())  
+stopifnot(all(c("States","Med_Income") %in% names(dataluv)))
+stopifnot(all(race_cols %in% names(dataluv))) 
+df_above50k <- dataluv %>% filter(Med_Income > 50000)
+race_mat <- df_above50k %>% select(all_of(race_cols)) %>% mutate_all(as.numeric)
+cor_values <- sapply(race_mat, function(x) cor(x, df_above50k$Med_Income, use = "complete.obs"))
+cor_df <- tibble(
+  Race = names(cor_values),
+  Correlation = as.numeric(cor_values)
+) %>%
+  arrange(Correlation) %>%           
+  mutate(Race = factor(Race, levels = Race)) 
+print(cor_df)
+
+#Numerical Summary 2
+##Five number summary
+p_sum<-dataluv %>%
+  summarise(
+    mean_income=mean(Med_Income, na.rm=TRUE),
+    median_income=median(Med_Income, na.rm=TRUE),
+    sd_income=sd(Med_Income, na.rm=TRUE),
+    min_income=min(Med_Income, na.rm=TRUE),
+    max_income=max(Med_Income, na.rm=TRUE)
+    
+  )
+
+
+
+##Grpahical Summary 1 
+df_scaled <- dataluv %>%
+  mutate(
+    median_income_scaled = Med_Income / 10000000,      
+    SSI_scaled = SSI / 100,                           
+    public_assistance_scaled = PubAssist / 100,
+    no_SSI_scaled = No_SSI / 100,                            
+    no_public_assistance_scaled = No_PubAssist / 100
+  ) %>%
+  select(States, median_income_scaled, SSI_scaled, public_assistance_scaled, no_SSI_scaled, no_public_assistance_scaled) %>%
+  pivot_longer(cols = -States, names_to = "variable", values_to = "value")
+
+
+top_states <- dataluv %>% 
+  arrange(desc(Med_Income)) %>% 
+  slice_sample(n = 10) %>% 
+  pull(States)
+
+df_filtered <- df_scaled %>% 
+  filter(States %in% top_states)
+
+gg<-ggplot(df_filtered, aes(x = States, y = value, fill = variable)) +
+  geom_col(position = "dodge") +
+  labs(title = "Comparison of Income, SSI, and Assistance (Top States)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##Graphical Summary 2
+
+p_cor <- ggplot(cor_df, aes(x = Race, y = Correlation, fill = Correlation)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = round(Correlation, 2)), hjust = -0.1, size = 3.5) +
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) +
+  coord_flip() +
+  scale_y_continuous(limits = c(min(cor_df$Correlation, 0) - 0.1, max(cor_df$Correlation, 0) + 0.1)) +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Correlation between Race and Med.Income(> $50k)",
+    x = "Racial Group",
+    y = "Pearson correlation (r)"
+  )
+
+```
+
+```{r}
+cor_df
+p_sum
+p_cor
+gg
+```
+
+
+
+
+
+
+
+
