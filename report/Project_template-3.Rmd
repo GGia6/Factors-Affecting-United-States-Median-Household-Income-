@@ -1,0 +1,179 @@
+---
+title: "Project Part 1"
+subtitle: "Factors that Affect Median Income"
+fontsize: 12pt
+geometry: margin=1in
+urlcolor: black
+output: pdf_document
+header-includes:
+- \usepackage{setspace}
+- \onehalfspacing
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, highlight=FALSE)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(scales)
+```
+# Pledge
+"We have neither given nor received unauthorized aid on this assignment."
+
+- Member 1: Gianna Gatling
+- Member 2: Nawal Khalid 
+- Member 3: Trisha Manohar
+
+\newpage
+
+## Introduction
+Race continues to serve as a significant determinant and factor within the labor economy in the United States. Along with race, the cost of goods in the United States has recently increased due to tariffs and other macroeconomic headwinds, making the standard of living higher for all families. In July of 2025, the median earnings of Hispanics and Blacks are less than those of Whites and Asians, with the lowest median earnings being $947 for Hispanics (United States Bureau of Labor Statistics). Additionally, in 2023, the general median hourly rate of Hispanic and Black workers was around 18.1 constant 2023 US dollars, while those of Asian and White workers were 20.12 and 19.78 constant 2023 US dollars, respectively (Tierney, Statista). Additionally, another topic of interest surrounds the allocation of social security with certain income levels. Traditionally, social security income is known to assist families of different demographics, ranging from retired workers to widowers. As of April 2025, roughly more than 20% of the United States population receives benefits from at least one Social Security program (DeSilver, Pew Research Center). However, due to the recent state of the economy, there have been less people paying the benefits via taxes than those who are receiving benefits, leading to potential long-term issues for fair allocation. Since many groups benefit from these payments, it is important to evaluate the difference in income levels between each group and eventually explore the groups that benefit the most from these payments. Considering these relevant topics, there are three main research questions that are to be evaluated: 
+
+Does race have a higher correlation with median income on the East Coast than on the West Coast? 
+
+Which race has the lowest correlation with median income above $50,000 in the United States? 
+
+Do households that earn Social Security Income (SSI) have a higher correlation with median income above or below the poverty line in 2024? 
+
+## Data Description
+The first step in creating the dataset involved gathering United States Census data using the Social Explore website. Through the website's resources, states were randomly selected, and their demographics were pulled. Consecutively, three data sets from 2024 were obtained using one-year estimates, with the first data set demonstrating income levels, distributed by state as well as other financial gains. The second data set included racial demographics by state. The two datasets were combined by lining them according to states and informed decisions were made on whether to use counts or percentages for each variable, resulting in an analysis ready dataset. The variables of choice were income by gender, total population, population density, median household income, racial makeup percentages (White, Asian, Black, American Indian, Pacific Islander, Two or More Races, Other Race), median household income, households that do/do not receive Public Assistance, and households that do/do not receive Social Security Income. The data modifications included switching axes to clean up the data, taking out the percentages of race, and choosing income by race instead for better readability. Since this is a very small sample size, any data that was collected would possibly be skewed due to the fact that states were used instead of people for observations. Another issue was that the data only reflects the year of 2024 as well as a sample of states, so the data would not be efficient to make conclusions about the overall United States population or other years. Additionally, the data is dependent on the people who submit information to the United States Census system, which may not be entirely reflective of the overall population. Choosing to use the average racial income count instead of simply comparing the racial demographics will better demonstrate income disparities. Furthermore, including both Social Security Income and Public Assistance Income will allow for the differentiation between additional financial gains, as well as exploring which one has a more prominent impact on median income. Additionally, having the distribution of Social Security Income in the data set will provide an accurate reference when comparing the values to the poverty line after analyzing the data. The data aims to provide insight into the most impactful factors that determine income by race as well as want for further discussion in conversations about income disparities in the United States. 
+## Exploratory Data Analysis
+
+
+```{r, echo=FALSE, warning=FALSE,results=FALSE}
+dataluv<- read.csv("dataset.csv")
+dataluv<- dataluv[-c(48:16335),]
+write.csv(dataluv, "cleaned_dataset.csv", row.names = FALSE)
+dataluv <- dataluv %>% rename(Med_Income = Median.Household.Income, 
+                              No_PubAssist= Households.without.Public.Assistance,
+                              PubAssist= Households.w..Public.Assistance.Income,
+                              SSI= Households.w..Social.Security.Income,
+                              No_SSI= Households.without.SSI,
+                              AI_AN= American.Indian.Alaska.Native,
+                              Multi_Race = X..2..Races)
+```
+
+
+```{r, echo=FALSE, warning=FALSE,results=FALSE}
+#Numerical Summary 1
+race_cols <- c("White","Asian","Black","AI_AN","Pacific.Islander","Multi_Race","Other.Race")
+
+
+stopifnot("dataluv" %in% ls())  
+stopifnot(all(c("States","Med_Income") %in% names(dataluv)))
+stopifnot(all(race_cols %in% names(dataluv))) 
+df_above50k <- dataluv %>% filter(Med_Income > 50000)
+race_mat <- df_above50k %>% select(all_of(race_cols)) %>% mutate_all(as.numeric)
+cor_values <- sapply(race_mat, function(x) cor(x, df_above50k$Med_Income, use = "complete.obs"))
+cor_df <- tibble(
+  Race = names(cor_values),
+  Correlation = as.numeric(cor_values)
+) %>%
+  arrange(Correlation) %>%           
+  mutate(Race = factor(Race, levels = Race)) 
+print(cor_df)
+
+#Numerical Summary 2
+##Five number summary
+p_sum<-dataluv %>%
+  summarise(
+    mean_income=mean(Med_Income, na.rm=TRUE),
+    median_income=median(Med_Income, na.rm=TRUE),
+    sd_income=sd(Med_Income, na.rm=TRUE),
+    min_income=min(Med_Income, na.rm=TRUE),
+    max_income=max(Med_Income, na.rm=TRUE)
+    
+  )
+
+
+
+##Grpahical Summary 1 
+df_scaled <- dataluv %>%
+  mutate(
+    median_income_scaled = Med_Income / 10000000,      
+    SSI_scaled = SSI / 100,                           
+    public_assistance_scaled = PubAssist / 100,
+    no_SSI_scaled = No_SSI / 100,                            
+    no_public_assistance_scaled = No_PubAssist / 100
+  ) %>%
+  select(States, median_income_scaled, SSI_scaled, public_assistance_scaled, no_SSI_scaled, no_public_assistance_scaled) %>%
+  pivot_longer(cols = -States, names_to = "variable", values_to = "value")
+
+
+top_states <- dataluv %>% 
+  arrange(desc(Med_Income)) %>% 
+  slice_sample(n = 10) %>% 
+  pull(States)
+
+df_filtered <- df_scaled %>% 
+  filter(States %in% top_states)
+
+gg<-ggplot(df_filtered, aes(x = States, y = value, fill = variable)) +
+  geom_col(position = "dodge") +
+  labs(title = "Comparison of Income, SSI, and Assistance (Top States)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##Graphical Summary 2
+
+p_cor <- ggplot(cor_df, aes(x = Race, y = Correlation, fill = Correlation)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = round(Correlation, 2)), hjust = -0.1, size = 3.5) +
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) +
+  coord_flip() +
+  scale_y_continuous(limits = c(min(cor_df$Correlation, 0) - 0.1, max(cor_df$Correlation, 0) + 0.1)) +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Correlation between Race and Med.Income(> $50k)",
+    x = "Racial Group",
+    y = "Pearson correlation (r)"
+  )
+
+```
+
+```{r}
+cor_df
+p_sum
+p_cor
+gg
+```
+
+
+## Conclusions
+To initiate the exploratory data analysis, a numerical summary was created to explore the correlation between race and median income of over $50,000. The strongest positive correlation in the list was the Pacific Islander racial group. This suggests that places with higher Pacific Islander represent may have higher median incomes. Alternatively, it was found that Black and American Indian/Alaskan Native has low negative correlations with median income. This can mean that states with higher Black or Alaskan Native/American Indian have slightly lower median incomes or essentially no relationship. For White, Other Race, Multi-Race, or Asian, there are moderate, positive correlations suggesting that income tends to rise when higher proportions of these categories are present. The correlation does not establish that racial groups cause income differences; however, it is beneficial to make assumptions about the association. Negative correlations could also reflect systemic disparities or clustering in certain regions.  
+
+The next numerical summary is a summarization of statistics for the Median Income variable. The mean income in the dataset was found to be $68,550.34, the median income was $66,681, the minimum income was $60,798, and the maximum income was found to be $99,389. The data widely ranges with a difference between the minimum and maximum values being $38,591. Furthermore, all states seem to have an income threshold over the 2024 poverty line, which was approximately $31,812 to $32,130. On average, the median income across the sample states is around $68,550. The median is slightly lower than the mean, suggesting that the distribution is rightly skewed, and states with extreme incomes tend to increase the mean. The standard deviation shows that median incomes vary from the mean by $6,657. This is a relatively small amount of variation; however, it still implies noticeable differences across states. Additionally, the lowest median income was found to be associated with West Virginia, where the highest median income was in Washington. 
+
+The first graphical summary is a histogram demonstrating correlation between race and median income of over $50,000. Pearson’s correlation was used to calculate the values giving more robust statistics. Pacific Islander remains as the highest positive correlation with median income, while the Black racial group remains as the highest negative correlation with incomes over $50,000. Surprisingly, states that have large proportions of multi-race or other races still have a moderate correlation with incomes over $50,000. This graph effectively starts to help answer one of the initial research questions about which race has the lowest correlation with median income above $50,000 in the United States. Without doing any further statistics, one could confidently state that the American Indian/Alaskan Native racial group has the lowest correlation.  
+
+The last graph demonstrates a comparison of median income, Social Security Income, and Public Assistance Income. The graph uses a sample of the most unique states to communicate this comparison. In the figure, Kansas has the highest proportion of people that don’t receive public assistance, whereas New York has the highest proportion of people who receive public assistance. Consequently, Colorado has the highest proportion of people who receive Social Security Income, while Delaware has the highest proportion of people who do not receive Social Security Income. The histogram is generally balanced across states, with Kansas and Colorado holding the most unique values. Even though median incomes were scaled, it seems that all states chosen in the sample are around the same income threshold, which is approximately $63,000. The figure gives insight into answering questions about Public Assistance recipients as well as Social Security recipients. In the future, more in-depth studies on racial makeup per state could alter these values, leading to more effective conclusions. 
+
+Altogether, these summaries explore qualitative and quantitative analyses on the most prominent factors surrounding median income. The analysis conducted sought to identify patterns and variability between race, median income, and extra income earnings that would prompt further research. The objective is that the likelihood of a stronger correlation in these variables could arise as more observations and variables are added, making it suitable for statistical analysis. The results from the exploratory data analysis also aided in confirming our choice of research questions as the variables of interest (median income and race) showed valid correlations. Additionally, there are other variables that were included in the dataset and were not assessed, such as population, gender, and population density. Assessing these variables in the future could provide more valuable insight into median income factors. Further refinement of the dataset, including the addition of categorical variables and new state observations, will improve the robustness of the analysis and strengthen the relevance of conclusions for those concerned with socioeconomic influences on median income.  
+
+
+
+\newpage
+
+## Appendix A: References
+
+### Introduction
+1. \url{https://www.bls.gov/news.release/pdf/wkyeng.pdfl}
+2. \url{https://www.statista.com/statistics/185385/median-hourly-earnings-of-wage-and-salary-workers-by-ethnicity/}
+3. \url{https://www.pewresearch.org/short-reads/2025/05/20/what-the-data-says-about-social-security/}
+‌
+
+### Data
+1. \url{https://www.socialexplorer.com/a9676d974c/explore}
+2. \url{https://www.socialexplorer.com/tables/ACS2023_5yr/R50034494}
+
+## Repository Link
+1. https://github.com/UVA-STAT3080/project-team_tgn.git
+
+
+
+
+
+
+
