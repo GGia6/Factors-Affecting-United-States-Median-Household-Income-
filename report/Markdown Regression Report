@@ -9,18 +9,12 @@ date: "2025-12-08"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(dplyr)
-library(tidyverse)
-library(car)
-library(corrplot)
-library(Hmisc)
-library(olsrr)
+
 ```
 # Pledge
-"We have neither given nor received unauthorized aid on this assignment."
+"I have neither given nor received unauthorized aid on this assignment."
 
-- Member 1: Gianna Gatling
-- Member 2: Trisha Manohar
+
 
 \newpage
 ### Introduction
@@ -34,104 +28,7 @@ To answer this question, a multiple linear regression model is used, with Median
 Due to many considerations, multiple linear regression is an appropriate test. This test uses two quantitative variables (response and predictor), satisfying structural requirements. Additionally, the model tests whether a group of variables such as; gender, race and population density accurately predict median household income. It also allows for testing the significance of these predictors in relation to median household income.  
 
  Primarily, the linear regression model started with a total of nine predictors, which proved to be significant with a p-value of 0.002351, which was significant enough to reject the null hypothesis. This is determined as the model was adequate in predicting household median income; therefore, assumptions were checked. After the production of residual plots for each predictor, there was evidence of clustering, funneling, and curvilinearity, which violated regression assumptions for homoscedasticity and linearity/normality. Taking this into consideration, the White, Asian, Pacific Islander, Biracial, and Other Race were removed. Assumptions were still found to be violated, so the female variable was also removed. The new model contained three predictors: male, population density, and the Black race. This model proved to be adequate at predicting median household income with a p-value of 0.01105. The residual plot satisfied linearity by showing mostly flat LOESS lines, meaning the model captures the main trend. Independence is satisfied with the observations since the U.S. states are independent units of analysis. The residual plot satisfied the assumption of homoscedasticity by having a fairly consistent vertical spread across predicted and fitted values. Lastly, the assumption was normality was satisfied since residuals appeared to be centered around zero. Inevitably, due to the small sample size, the residual plots also showed outliers, which should be taken into account with future studies. 
-```{r, include=FALSE}
-data<- read.csv("/Users/giannagatling/Downloads/cleaned_dataset.csv")
 
-data<-rename(data,
-       AI_AN = American.Indian.Alaska.Native,
-       Biracial = X..2..Races)
-
-
-races <- c("White", "Black", "Pacific.Islander", "Asian", "Other.Race", "Biracial", "AI_AN")
-
-
-
-data$MajorityRace <- apply(data[, races], 1, function(x) names(which.max(x)))
-
-
-```
-
-
-```{r, include=FALSE}
-round(cor(data[3:17],log(data$Median.Household.Income)),3)
-
-round(cor(data[3:17],data$Median.Household.Income),3)
-```
-
-## Fit Model
-```{r, include=FALSE}
-## strongest relationships include gender and social security income 
-datamod1<- lm(Median.Household.Income ~ Male + Female + White +Asian + Black +Pacific.Islander+  Biracial + Other.Race +Population.Density , data = data)
-
-summary(datamod1)
-
-## Global F Test:
-
-#-  Hypotheses:
-   #-   $H_0: \beta_1= \beta_2=\beta_3=\beta_4=\beta_5=\beta_6=\beta_7=\beta_8=\beta_9=0$ (the model is not adequate)
-   #-   $H_a$:at least one of $\beta_1 , \beta_2 , \beta_3,\beta_4, \beta_5,\beta_6,\beta_7,\beta_8,\beta_9$ does not equal 0 (the model is adequate)
-#-   *Distribution of test statistic*: F with 9, 37 DF
-#-   *Test Statistic*: F= 3.661
-#-   *Pvalue*:0.002351
-#-   *Decision*: 0.002351\<0.05 -\> REJECT H0
-#-   *Conclusion*: The model with race, population density, and gender, is adequate at predicting median household income.
-
-## Removed predictors based off of significance 
-```
-
-
-```{r, include=FALSE}
-datamod3<- lm(Median.Household.Income ~ Male + Female + Black + Population.Density, data = data)
-
-summary(datamod3)
-
-datamod1vif<-round(vif(datamod3),3)
-datamod1vif
-##The model with the black race, population density, and gender, is adequate at predicting median household income. but violated assumptions
-```
-
-
-
-## Fit Model and Check Model Assumptions
-```{r, include=FALSE}
-
-
-residualPlots(datamod3,tests=F)
-
-
-```
-
-```{r}
-datamod4<- lm(Median.Household.Income ~ Male  + Population.Density  + Black, data = data)
-
-summary(datamod4)
-
-round(vif(datamod4), 4)
-
-```
-
-- Prediction model: $MedianHouseholdIncome=32678.5361+ 0.7382Male+ 9814.4278 BlackRace- 10.6081 PopulationDensity+\epsilon$
-
--   Hypotheses:
-    -   $H_0: \beta_1= \beta_2=\beta_3=0$ (the model is not adequate)
-    -   $H_a$: At least one of $\beta_1 , \beta_2 , \beta_3$ does not equal 0 (the model is adequate)
--   *Distribution of test statistic*: F with 4, 42 DF
--   *Test Statistic*: F= 4.181
--   *Pvalue*: 0.01105
--   *Decision*: 0.01105\<0.05 -\> REJECT H0
-
-
-```{r, include=FALSE}
-## Check Accuracy of Model Predictions
-
-# Using Alabama and Virginia as tests
-predict(datamod4,interval="prediction")[c(1, 43),]
-
-datamod2vif<-round(vif(datamod4),3)
-datamod2vif
-
-
-```
 
 ### Results 
 The final model to predict median household income included males, Black race, and population density, which showed to be statistically significant with a p-value of 0.01105 and a F-test statistic of 4.181. This allowed for rejection of the null hypothesis that the model is not adequate at predicting median household income, and the alternative hypothesis was accepted.  After looking at the prediction model, one can see that the Black race makes the biggest contribution to median household income, having the highest beta value, whereas population density makes a negative contribution. To evaluate the accuracy of the model with predicting income, Alabama and Virginia were chosen as test predictions. The model predicted a 95% confidence interval of (54819.08, 80378.33) for Alabama, and a 95% confidence interval of (60416.09, 86014.42) for Virginia. The actual respective median household income values for Alabama and Virginia are \$66,659 and $92,090, respectively. The 95% confidence interval for Alabama included the actual value, whereas Virginia did not. In the context of the study, this could mean that Virginia is either an outlier in the dataset, or the model has low prediction accuracy. There is also no evidence of multicollinearity in the predictors as evidenced by the VIF values, which were all lower than 10.  
@@ -153,17 +50,10 @@ In a generalized context, these findings suggest that demographic and population
 3. \url{https://www.pewresearch.org/short-reads/2025/05/20/what-the-data-says-about-social-security/}
 ‌
 
-### Methods
-
-```{r}
-residualPlots(datamod4,tests=F)
-```
-
 
 ### Data
 1. \url{https://www.socialexplorer.com/a9676d974c/explore}
 2. \url{https://www.socialexplorer.com/tables/ACS2023_5yr/R50034494}
 
-## Repository Link
-1. https://github.com/UVA-STAT3080/project-team_tgn.git
+
 
